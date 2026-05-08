@@ -28,7 +28,7 @@ from .globals import (
 
 from .custom_logger import logger
 from .imdb import get_imdb_id, get_imdb_url
-from .tmdb import get_tmdb_id_tmdb, get_media_type, get_image_url, get_tmdb_url
+from .tmdb import get_tmdb_id_tmdb, get_media_type, get_image_url, get_tmdb_url, get_original_title_or_original_name_from_tmdb, get_episode_name_from_tmdb #Rex
 from .trakt import get_trakt_url, get_tmdb_id_trakt
 from .letterboxd import get_letterboxd_url
 
@@ -126,13 +126,13 @@ def set_rp(info, length):
     # If the key is in the cache, use the cached values
     if cache_key in cache:
         media_type, urls = cache[cache_key]
-        trakt_url, tmdb_url, imdb_url, letterboxd_url, image_url = urls
+        trakt_url, tmdb_url, imdb_url, letterboxd_url, image_url, original_title_or_original_name, episode_name = urls #Rex
         logger.debug(f"Retrieved cached values for {cache_key}: media_type={media_type}, urls={urls}")
     else:
         # Otherwise, calculate the values and store them in the cache
         media_type = get_media_type(info)
         urls = get_urls(info, media_type)
-        trakt_url, tmdb_url, imdb_url, letterboxd_url, image_url = urls
+        trakt_url, tmdb_url, imdb_url, letterboxd_url, image_url, original_title_or_original_name, episode_name = urls #Rex
 
         cache[cache_key] = (media_type, urls)
         logger.debug(f"Cached values for {cache_key}: media_type={media_type}, urls={urls}")
@@ -143,13 +143,13 @@ def set_rp(info, length):
         end_time = calculate_end_time(start_time, length, session)
         logger.debug(f"Calculated start_time={start_time} and end_time={end_time}")
 
-    update_rpc_mediatype(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url)
+    update_rpc_mediatype(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, original_title_or_original_name, episode_name) #Rex
 
     previous_info = info
     previous_speed = length['speed']
     
 # Function to update the RP based on the media type
-def update_rpc_mediatype(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url):
+def update_rpc_mediatype(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, original_title_or_original_name, episode_name): #Rex
     media_type_functions = {
         'movie': update_rpc_movie,
         'episode': update_rpc_episode,
@@ -159,13 +159,16 @@ def update_rpc_mediatype(info, length, start_time, end_time, image_url, imdb_url
 
     media_type = info['type']
     if media_type in media_type_functions:
-        media_type_functions[media_type](info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url)
+        if media_type == 'episode': #Rex
+            media_type_functions[media_type](info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, original_title_or_original_name, episode_name, letterboxd_url) #Rex
+        else: #Rex
+            media_type_functions[media_type](info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, original_title_or_original_name, episode_name) #Rex
     else:
         logger.info("Media type is not recognized. Clearing RPC...")
         RPC.clear()
 
 # Function to clear the RP if nothing is playing or if the media type is unknown
-def clear_rpc_if_unknown(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url):
+def clear_rpc_if_unknown(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, original_title_or_original_name, episode_name): #Rex
     if length['speed'] == 0:
         # If nothing is playing, log an info message and clear the RP
         logger.info("Nothing is playing. Clearing RPC...")
@@ -176,22 +179,22 @@ def clear_rpc_if_unknown(info, length, start_time, end_time, image_url, imdb_url
         RPC.clear()
 
 # Function to update the RP for a movie
-def update_rpc_movie(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url):
+def update_rpc_movie(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, original_title_or_original_name, episode_name): #Rex
     is_playing = length['speed'] != 0
-    update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, 'movie', is_playing)
+    update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, 'movie', is_playing, original_title_or_original_name, episode_name) #Rex
 
 # Function to update the RP for an episode
-def update_rpc_episode(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url=None):
+def update_rpc_episode(info, length, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, original_title_or_original_name, episode_name, letterboxd_url=None): #Rex
     is_playing = length['speed'] != 0
-    update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, None, 'episode', is_playing)
+    update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, None, 'episode', is_playing, original_title_or_original_name, episode_name) #Rex
 
 # Function to update the RP for a channel
 def update_rpc_channel(info, length, start_time, end_time, image_url, *_):
     is_playing = length['speed'] != 0
-    update_rpc(info, start_time, end_time, image_url, None, None, None, None, 'channel', is_playing)
+    update_rpc(info, start_time, end_time, image_url, None, None, None, None, 'channel', is_playing, None) #Rex
 
 # Function to update the RP
-def update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, media_type, is_playing):
+def update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_url, letterboxd_url, media_type, is_playing, original_title_or_original_name, episode_name): #Rex
     logger.info(f"Updated RPC - {'Playing' if is_playing else 'Paused'} {media_type.capitalize()}:")
     logger.info(f"{info['title']}")
 
@@ -207,12 +210,13 @@ def update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_
 
     rpc_params = {
         "activity_type": ActivityType.WATCHING,
-        "details": str(info['label']) if media_type == 'channel' else (str(info['title']) + ' (' + str(info['year']) + ')' if media_type == 'movie' else str(info['showtitle']) if media_type == 'episode' else str(info['title'])),
+        #Rex "details": str(info['label']) if media_type == 'channel' else (str(info['title']) + ' (' + str(info['year']) + ')' if media_type == 'movie' else str(info['showtitle']) if media_type == 'episode' else str(info['title'])),
+        "details": str(info['label']) if media_type == 'channel' else (original_title_or_original_name  + ' ' + str(info['title']) + ' (' + str(info['year']) + ')' if media_type == 'movie' else original_title_or_original_name  + ' ' + str(info['showtitle']) + ' (' + str(info['year']) + ')' if media_type == 'episode' else str(info['title'])), #Rex
         "state": str(info['title']) if (media_type == 'channel' and info['title']) else ("Playing" if is_playing else "Paused"),
         "large_image": image_url,
         "large_text": large_text,
-        #"small_image": 'play' if is_playing else 'pause',
-        #"small_text": 'Playing' if is_playing else 'Paused'
+        "small_image": 'play' if is_playing else 'pause', #Rex
+        "small_text": 'Playing' if is_playing else 'Paused' #Rex
     }
 
     if buttons:
@@ -223,7 +227,8 @@ def update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_
         rpc_params["end"] = end_time
 
     if media_type == 'episode':
-        rpc_params["state"] = info["title"]
+        #Rex rpc_params["state"] = info["title"]
+        rpc_params["state"] = episode_name #Rex
 
     if media_type == 'movie' and is_playing:
         if DIRECTOR_ENABLED and 'director' in info and info['director'] is not None and GENRES_ENABLED is False:
@@ -287,10 +292,14 @@ def get_urls(info, media_type):
     imdb_url = None
     letterboxd_url = None
     image_url = DEFAULT_POSTER_URL # We set the default poster URL in case we can't get the image URL or if TMDB_THUMBNAIL_ENABLED is False
+    original_title_or_original_name = None #Rex
+    episode_name = None #Rex
     
     # We don't need thumbnail or buttons for channels
     if media_type != 'channel':
         tmdb_id = get_tmdb_id_tmdb(info, media_type)
+        original_title_or_original_name = get_original_title_or_original_name_from_tmdb(tmdb_id, media_type) #Rex
+        episode_name = get_episode_name_from_tmdb(tmdb_id, media_type, str(info.get('season')), str(info.get('episode'))) #Rex
         
         if TMDB_THUMBNAIL_ENABLED:
             tmdb_url = get_tmdb_url(tmdb_id, media_type)
@@ -305,4 +314,4 @@ def get_urls(info, media_type):
         if LETTERBOXD_BUTTON_ENABLED:
             letterboxd_url = get_letterboxd_url(tmdb_id)
     
-    return trakt_url, tmdb_url, imdb_url, letterboxd_url, image_url
+    return trakt_url, tmdb_url, imdb_url, letterboxd_url, image_url, original_title_or_original_name, episode_name #Rex
