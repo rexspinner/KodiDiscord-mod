@@ -113,6 +113,24 @@ def get_image_url_from_tmdb(tmdb_id, media_type):
     tmdb_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
     response = make_api_request(tmdb_url)
     return f"https://image.tmdb.org/t/p/w185{response['poster_path']}" if 'poster_path' in response and response['poster_path'] else DEFAULT_POSTER_URL
+    
+def get_original_title_or_original_name_from_tmdb(tmdb_id, media_type): #Rex
+    tmdb_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}?api_key={TMDB_API_KEY}"
+    response = make_api_request(tmdb_url)
+    if not response:
+        return None
+    if media_type == 'movie':
+        return response.get('original_title')
+    else:
+        return response.get('original_name')
+        
+def get_episode_name_from_tmdb(tmdb_id, media_type, season_number, episode_number): #Rex
+    tmdb_url = f"https://api.themoviedb.org/3/{media_type}/{tmdb_id}/season/{season_number}/episode/{episode_number}?api_key={TMDB_API_KEY}"
+    response = make_api_request(tmdb_url)
+    if not response:
+        return None
+    if media_type == 'tv':
+        return response.get('name')
 
 def get_tmdb_url(tmdb_id, media_type):
     return f"https://www.themoviedb.org/{media_type}/{tmdb_id}" if tmdb_id else None
