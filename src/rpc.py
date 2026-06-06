@@ -228,7 +228,7 @@ def update_rpc(info, start_time, end_time, image_url, imdb_url, tmdb_url, trakt_
 
     if media_type == 'episode':
         #Rex rpc_params["state"] = info["title"]
-        rpc_params["state"] = episode_name #Rex
+        rpc_params["state"] = episode_name if episode_name else info["title"] #Rex
 
     if media_type == 'movie' and is_playing:
         if DIRECTOR_ENABLED and 'director' in info and info['director'] is not None and GENRES_ENABLED is False:
